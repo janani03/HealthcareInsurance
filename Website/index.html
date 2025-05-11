@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Charge Search</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-gray: #f8f9fa;
+            --medium-gray: #e9ecef;
+            --dark-gray: #6c757d;
+            --text-color: #212529;
+            --info-color: #17a2b8;
+            --success-color: #28a745;
+        }
+        
+        body {
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom: none;
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px 8px 0 0 !important;
+        }
+        
+        .form-control, .form-select {
+            padding: 0.75rem 1rem;
+            border: 1px solid #021fac;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #0070bb;
+        }
+        
+        .result-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border-left: 4px solid var(--secondary-color);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .recommendation-card {
+            height: 100%;
+            border-left: 4px solid;
+        }
+        
+        .recommendation-card .card-header {
+            border-radius: 8px 8px 0 0 !important;
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .result-table th {
+            text-align: left;
+            padding: 0.75rem;
+            width: 35%;
+            color: var(--primary-color);
+            font-weight: 600;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .result-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .price-value {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        h2, h3, h4 {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        label {
+            color: var(--primary-color);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .search-icon {
+            margin-right: 8px;
+        }
+        
+        .loading-spinner {
+            display: none;
+            margin-left: 10px;
+        }
+        
+        .section-title {
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1.25rem;
+            }
+            
+            .result-table th, 
+            .result-table td {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="text-center mb-0"><i class="fas fa-hospital me-2"></i>Hospital Charge Search</h2>
+            </div>
+            <div class="card-body">
+                <form id="searchForm">
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="code"><i class="fas fa-barcode me-2"></i>Procedure Code</label>
+                            <input type="text" class="form-control" id="code" name="code" required placeholder="Enter CPT code">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hospital"><i class="fas fa-hospital-alt me-2"></i>Hospital (Optional)</label>
+                            <select class="form-select" id="hospital" name="hospital_id">
+                                <option value="">All Hospitals</option>
+                                {% for hospital in hospitals %}
+                                <option value="{{ hospital.hospital_id }}">{{ hospital.hospital_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label for="plan_name"><i class="fas fa-file-invoice-dollar me-2"></i>Insurance Plan (Optional)</label>
+                            <select class="form-select" id="plan_name" name="plan_name">
+                                <option value="">Select a plan</option>
+                                {% for payer in payers %}
+                                <option value="{{ payer.plan_name }}">{{ payer.payer_name }} - {{ payer.plan_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button type="submit" class="btn btn-primary" id="searchButton">
+                            <i class="fas fa-search search-icon"></i>Search Charges
+                            <span class="loading-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary ms-2" id="testDbButton">
+                            <i class="fas fa-database me-1"></i>Test DB
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="error" class="alert alert-danger mt-4 d-none"></div>
+                <div id="dbTestResult" class="alert alert-info mt-4 d-none"></div>
+                
+                <!-- Results Section - Now appears FIRST -->
+                <div id="results" class="mt-5 d-none">
+                    <h4 class="section-title"><i class="fas fa-file-medical-alt me-2"></i>Charge Information</h4>
+                    <div class="result-card">
+                        <h5 id="resultHospital" class="mb-4"><i class="fas fa-hospital me-2"></i></h5>
+                        <table class="result-table">
+                            <tbody>
+                                <tr>
+                                    <th><i class="fas fa-barcode me-2"></i>Procedure Code</th>
+                                    <td id="resultCode"></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-align-left me-2"></i>Description</th>
+                                    <td id="resultDescription"></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-dollar-sign me-2"></i>Standard Gross Charge</th>
+                                    <td><span id="resultGross" class="price-value"></span></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-money-bill-wave me-2"></i>Discounted Cash Price</th>
+                                    <td><span id="resultCash" class="price-value"></span></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-handshake me-2"></i>Negotiated Rate</th>
+                                    <td><span id="resultNegotiated" class="price-value"></span></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-arrow-down me-2"></i>Minimum Charge</th>
+                                    <td><span id="resultMin" class="price-value"></span></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-arrow-up me-2"></i>Maximum Charge</th>
+                                    <td><span id="resultMax" class="price-value"></span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Recommendations Section - Now appears AFTER results -->
+                <div class="recommendations mt-5 d-none" id="recommendations">
+                    <h4 class="section-title"><i class="fas fa-lightbulb me-2"></i>Best Options</h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 recommendation-card" style="border-left-color: var(--info-color);">
+                                <div class="card-header text-white" style="background-color: var(--info-color);">
+                                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Best Insurance Option</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p id="bestInsuranceText" class="mb-1">Loading...</p>
+                                    <p id="bestInsuranceRate" class="price-value fw-bold fs-5 mt-2"></p>
+                                    <small class="text-muted">Lowest negotiated rate for this procedure</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 recommendation-card" style="border-left-color: var(--success-color);">
+                                <div class="card-header text-white" style="background-color: var(--success-color);">
+                                    <h5 class="mb-0"><i class="fas fa-hospital me-2"></i>Best Hospital Option</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p id="bestHospitalText" class="mb-1">Loading...</p>
+                                    <p id="bestHospitalRate" class="price-value fw-bold fs-5 mt-2"></p>
+                                    <small class="text-muted">Lowest negotiated rate for this procedure</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Test database connection
+            $('#testDbButton').click(function() {
+                $('#dbTestResult').addClass('d-none');
+                $('#searchButton').prop('disabled', true);
+                $('.loading-spinner').show();
+                
+                $.get('/testdb', function(response) {
+                    if (response.status === 'success') {
+                        $('#dbTestResult').removeClass('alert-danger').addClass('alert-info')
+                            .html(`<i class="fas fa-check-circle me-2"></i>Database connection successful!<br>
+                                   <small>Database: ${response.database}, Test value: ${response.result.test_value}</small>`)
+                            .removeClass('d-none');
+                    } else {
+                        $('#dbTestResult').removeClass('alert-info').addClass('alert-danger')
+                            .html(`<i class="fas fa-exclamation-circle me-2"></i>Database connection failed`)
+                            .removeClass('d-none');
+                    }
+                }).fail(function(xhr) {
+                    $('#dbTestResult').removeClass('alert-info').addClass('alert-danger')
+                        .html(`<i class="fas fa-exclamation-circle me-2"></i>Database connection failed: ${xhr.responseJSON?.details || 'Unknown error'}`)
+                        .removeClass('d-none');
+                }).always(function() {
+                    $('#searchButton').prop('disabled', false);
+                    $('.loading-spinner').hide();
+                });
+            });
+            
+            // Handle form submission
+            $('#searchForm').submit(function(e) {
+                e.preventDefault();
+                $('#error').addClass('d-none');
+                $('#searchButton').prop('disabled', true);
+                $('.loading-spinner').show();
+                
+                const formData = {
+                    code: $('#code').val(),
+                    plan_name: $('#plan_name').val(),
+                    hospital_id: $('#hospital').val()
+                };
+                
+                $.ajax({
+                    url: '/search',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.error) {
+                            $('#error').text(response.error).removeClass('d-none');
+                            $('#results, #recommendations').addClass('d-none');
+                        } else {
+                            // Show detailed results if we have specific data
+                            if (response.data) {
+                                displayResults(response.data);
+                                $('#results').removeClass('d-none');
+                            } else {
+                                $('#results').addClass('d-none');
+                            }
+                            
+                            // Show recommendations when we have a procedure code
+                            if ($('#code').val().trim()) {
+                                displayRecommendations(response);
+                                $('#recommendations').removeClass('d-none');
+                            } else {
+                                $('#recommendations').addClass('d-none');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'An error occurred while processing your request.';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                            if (xhr.responseJSON.details) {
+                                errorMsg += `<br><small>${xhr.responseJSON.details}</small>`;
+                            }
+                        }
+                        $('#error').html(errorMsg).removeClass('d-none');
+                        $('#results, #recommendations').addClass('d-none');
+                    },
+                    complete: function() {
+                        $('#searchButton').prop('disabled', false);
+                        $('.loading-spinner').hide();
+                    }
+                });
+            });
+            
+            function displayResults(result) {
+                const formatCurrency = (value) => {
+                    if (value === null || value === undefined) return 'N/A';
+                    return '$' + parseFloat(value).toFixed(2);
+                };
+
+                $('#resultHospital').html('<i class="fas fa-hospital me-2"></i>' + (result.hospital_name || 'N/A'));
+                $('#resultCode').text(result.procedure_code || 'N/A');
+                $('#resultDescription').text(result.description || 'N/A');
+                $('#resultGross').text(formatCurrency(result.standard_charge_gross));
+                $('#resultCash').text(formatCurrency(result.standard_charge_discounted_cash));
+                $('#resultNegotiated').text(formatCurrency(result.negotiated_rate));
+                $('#resultMin').text(formatCurrency(result.standard_charge_min));
+                $('#resultMax').text(formatCurrency(result.standard_charge_max));
+            }
+            
+            function displayRecommendations(response) {
+                const formatCurrency = (value) => {
+                    if (value === null || value === undefined) return 'N/A';
+                    return '$' + parseFloat(value).toFixed(2);
+                };
+
+                // Display best insurance
+                if (response.best_insurance) {
+                    $('#bestInsuranceText').html(
+                        `<strong>${response.best_insurance.payer_name}</strong><br>${response.best_insurance.plan_name}`
+                    );
+                    $('#bestInsuranceRate').text(formatCurrency(response.best_insurance.best_rate));
+                } else {
+                    $('#bestInsuranceText').text('No insurance data available');
+                    $('#bestInsuranceRate').text('N/A');
+                }
+
+                // Display best hospital
+                if (response.best_hospital) {
+                    $('#bestHospitalText').html(
+                        `<strong>${response.best_hospital.hospital_name}</strong>`
+                    );
+                    $('#bestHospitalRate').text(formatCurrency(response.best_hospital.best_rate));
+                } else {
+                    $('#bestHospitalText').text('No hospital data available');
+                    $('#bestHospitalRate').text('N/A');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
